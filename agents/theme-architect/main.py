@@ -176,7 +176,7 @@ async def heartbeat() -> None:
     """Paperclip heartbeat mode."""
     print("[heartbeat] Theme Architect waking up...", flush=True)
 
-    if config.paperclip_api_key and config.paperclip_company_id:
+    if config.paperclip_company_id:
         from paperclip_client import PaperclipClient
 
         client = PaperclipClient(
@@ -197,11 +197,14 @@ async def heartbeat() -> None:
 
 async def _heartbeat_with_paperclip(client) -> None:
     """Run heartbeat with full Paperclip task lifecycle integration."""
-    tasks = await client.fetch_assigned_tasks()
+    all_tasks = await client.fetch_assigned_tasks()
+    # Only process tasks in 'todo' status — skip done, in_progress (already executing
+    # by Paperclip's scheduler or another worker), blocked, cancelled.
+    tasks = [t for t in all_tasks if t.get("status") == "todo"]
     result: str | None = None
 
     if tasks:
-        print(f"[heartbeat] Found {len(tasks)} assigned task(s)", flush=True)
+        print(f"[heartbeat] Found {len(tasks)} todo task(s) (of {len(all_tasks)} assigned)", flush=True)
         for task in tasks:
             task_id = task["id"]
             title = task.get("title", "Untitled")

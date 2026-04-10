@@ -28,7 +28,7 @@ from config import Config, config, store_slug_from_domain
 from system_prompt import SYSTEM_PROMPT
 from tools import theme_tools_server
 
-PROJECTS_ROOT = Path(__file__).resolve().parent.parent  # /Users/melo/shopify-theme/
+PROJECTS_ROOT = Path(__file__).resolve().parent.parent.parent  # /Users/melo/shopify-theme/
 
 _DOMAIN_RE = re.compile(r"[\w][\w-]*\.myshopify\.com")
 
@@ -158,7 +158,7 @@ async def heartbeat() -> None:
     print("[heartbeat] Theme Manager waking up...", flush=True)
 
     # Check if Paperclip API is configured
-    if config.paperclip_api_key and config.paperclip_company_id:
+    if config.paperclip_company_id:
         from paperclip_client import PaperclipClient
 
         client = PaperclipClient(
@@ -181,11 +181,12 @@ async def _heartbeat_with_paperclip(client) -> None:
     """Run heartbeat with full Paperclip task lifecycle integration."""
     from paperclip_client import PaperclipClient
 
-    tasks = await client.fetch_assigned_tasks()
+    all_tasks = await client.fetch_assigned_tasks()
+    tasks = [t for t in all_tasks if t.get("status") == "todo"]
     result: str | None = None
 
     if tasks:
-        print(f"[heartbeat] Found {len(tasks)} assigned task(s)", flush=True)
+        print(f"[heartbeat] Found {len(tasks)} todo task(s) (of {len(all_tasks)} assigned)", flush=True)
         for task in tasks:
             task_id = task["id"]
             title = task.get("title", "Untitled")

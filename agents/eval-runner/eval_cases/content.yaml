@@ -1,0 +1,71 @@
+suite: "Content & Editorial"
+cases:
+  - id: "rich-text-block"
+    title: "Centered rich text section with heading and paragraph"
+    description: >
+      A simple section with a centered heading, a paragraph of body text, and
+      an optional button below. Used for storytelling, brand messaging, or
+      announcements. No images.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["text", "preset"]
+      must_flag_gaps: false
+
+  - id: "faq-accordion"
+    title: "FAQ section with collapsible questions"
+    description: >
+      An FAQ section with 6-10 questions. Each question is a row that expands to
+      show the answer when clicked. Single-column layout, with a heading at top.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["FAQ", "accordion", "preset"]
+      must_flag_gaps: false
+
+  - id: "video-embed-section"
+    title: "Embedded video with optional caption"
+    description: >
+      A section that embeds a video (either Shopify-hosted or YouTube/Vimeo URL).
+      Optional caption text below the video. Full-width or contained.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["video", "preset"]
+      must_flag_gaps: false
+
+  - id: "icons-with-text"
+    title: "3-column section with icons and text underneath"
+    description: >
+      A section with 3 or 4 columns. Each column has an icon at the top, a small
+      heading, and a short description. Used for highlighting features
+      (e.g., free shipping, easy returns, secure checkout).
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["icon", "preset"]
+      must_flag_gaps: false
+
+  - id: "image-with-text-split"
+    title: "Image on left, text content on right (or alternating)"
+    description: >
+      An editorial section showing an image on one half and text content
+      (heading + paragraph + button) on the other half. Side-by-side layout
+      that stacks on mobile.
+    ground_truth:
+      expected_sections: ["media-with-content.liquid", "section.liquid"]
+    scoring:
+      must_mention: ["image", "text"]
+      must_flag_gaps: false
+
+  - id: "multicolumn-features"
+    title: "Multi-column features grid (4 columns)"
+    description: >
+      A 4-column grid with each column containing an image, heading, and short
+      description. Used for showcasing collections, brand pillars, or category
+      navigation.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["multicolumn", "preset"]
+      must_flag_gaps: false

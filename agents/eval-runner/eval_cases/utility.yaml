@@ -1,0 +1,58 @@
+suite: "Utility & Templates"
+cases:
+  - id: "main-cart-page"
+    title: "Cart page main section"
+    description: >
+      The main section for the cart page — shows the line items, quantities,
+      subtotal, shipping notice, and a checkout button. This is the primary
+      content of /cart.
+    ground_truth:
+      expected_sections: ["main-cart.liquid"]
+    scoring:
+      must_mention: ["cart"]
+      must_flag_gaps: false
+
+  - id: "search-results"
+    title: "Search results page"
+    description: >
+      The page that shows results when a customer searches the store. Lists
+      matching products with filters and sorting options.
+    ground_truth:
+      expected_sections: ["search-results.liquid"]
+      acceptable_sections: ["search-header.liquid"]
+    scoring:
+      must_mention: ["search"]
+      must_flag_gaps: false
+
+  - id: "404-page"
+    title: "404 page not found"
+    description: >
+      The main content section of the 404 error page. Shows a "page not found"
+      message and a link back to the homepage.
+    ground_truth:
+      expected_sections: ["main-404.liquid"]
+    scoring:
+      must_mention: ["404"]
+      must_flag_gaps: false
+
+  - id: "password-page"
+    title: "Password protect splash page"
+    description: >
+      The full-page splash that shows when the store is password-protected.
+      Has a logo, message, and password entry form.
+    ground_truth:
+      expected_sections: ["password.liquid"]
+    scoring:
+      must_mention: ["password"]
+      must_flag_gaps: false
+
+  - id: "custom-liquid-block"
+    title: "Custom Liquid code block for arbitrary HTML/Liquid"
+    description: >
+      A section where I can paste custom Liquid or HTML code directly to render
+      arbitrary content (e.g., a third-party widget script or custom markup).
+    ground_truth:
+      expected_sections: ["custom-liquid.liquid"]
+    scoring:
+      must_mention: ["custom", "liquid"]
+      must_flag_gaps: false

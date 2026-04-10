@@ -10,7 +10,7 @@ load_dotenv()
 
 _PLACEHOLDER_TOKENS = {"", "dry-run-token", "your_shopify_access_token", "your_github_token"}
 
-PROJECTS_ROOT = Path(__file__).resolve().parent.parent  # /Users/melo/shopify-theme/
+PROJECTS_ROOT = Path(__file__).resolve().parent.parent.parent  # /Users/melo/shopify-theme/
 
 
 def store_slug_from_domain(domain: str) -> str:

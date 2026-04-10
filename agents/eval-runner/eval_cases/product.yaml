@@ -1,0 +1,61 @@
+suite: "Product Display"
+cases:
+  - id: "product-grid"
+    title: "Grid of products from a collection"
+    description: >
+      A grid showing 8-12 products from a featured collection. Each product card
+      has an image, title, price, and a quick-add button. 4 columns on desktop,
+      2 on mobile.
+    ground_truth:
+      expected_sections: ["product-list.liquid"]
+    scoring:
+      must_mention: ["product", "collection", "grid"]
+      must_flag_gaps: false
+
+  - id: "product-carousel"
+    title: "Horizontal product carousel"
+    description: >
+      A horizontal scrolling carousel of products from a specific collection.
+      Each card shows the product image, title, price, and quick-add. Arrow
+      navigation on desktop, swipe on mobile.
+    ground_truth:
+      expected_sections: ["product-list.liquid"]
+      acceptable_sections: ["carousel.liquid"]
+    scoring:
+      must_mention: ["carousel", "product"]
+      must_flag_gaps: false
+
+  - id: "product-hotspots"
+    title: "Lifestyle image with clickable product hotspots"
+    description: >
+      A large lifestyle photo (e.g., a model wearing multiple products) with
+      clickable dot markers on the image. Each marker, when hovered or clicked,
+      shows a small popup with that product's name, price, and quick-add.
+    ground_truth:
+      expected_sections: ["product-hotspots.liquid"]
+    scoring:
+      must_mention: ["hotspot", "product"]
+      must_flag_gaps: false
+
+  - id: "featured-single-product"
+    title: "Featured single product with media gallery"
+    description: >
+      Showcase one specific product on the homepage with its full media gallery
+      (multiple images), title, description, price, and add-to-cart button.
+      Similar to a product page but as a section.
+    ground_truth:
+      expected_sections: ["featured-product.liquid", "featured-product-information.liquid"]
+    scoring:
+      must_mention: ["featured", "product"]
+      must_flag_gaps: false
+
+  - id: "product-recommendations"
+    title: "You might also like — related products"
+    description: >
+      Below the product page, show 4-8 related products based on Shopify's
+      recommendation algorithm. Title says "You might also like". Grid layout.
+    ground_truth:
+      expected_sections: ["product-recommendations.liquid"]
+    scoring:
+      must_mention: ["recommendation"]
+      must_flag_gaps: false

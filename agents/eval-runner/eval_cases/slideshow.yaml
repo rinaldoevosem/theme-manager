@@ -1,0 +1,37 @@
+suite: "Slideshow"
+cases:
+  - id: "slideshow-basic"
+    title: "Multi-slide image carousel for homepage"
+    description: >
+      A homepage slideshow with 3-5 image slides. Each slide has a heading,
+      description text, and a CTA button. Navigation dots at the bottom and
+      auto-advance every 5 seconds.
+    ground_truth:
+      expected_sections: ["slideshow.liquid"]
+      acceptable_sections: ["hero.liquid"]
+    scoring:
+      must_mention: ["slide"]
+      must_flag_gaps: false
+
+  - id: "slideshow-layered"
+    title: "Layered slideshow with multiple visual panels per slide"
+    description: >
+      A slideshow where each slide has multiple layered visual elements — a
+      background, a foreground product image, decorative shapes, and overlapping
+      text. Each slide can have up to 6 layered elements.
+    ground_truth:
+      expected_sections: ["layered-slideshow.liquid"]
+    scoring:
+      must_mention: ["layered", "slide"]
+      must_flag_gaps: false
+
+  - id: "slideshow-inset"
+    title: "Slideshow that doesn't go full-width (page-padded)"
+    description: >
+      A slideshow on the homepage that respects the page width gutter (does NOT
+      bleed to the edge). Multiple slides with images and CTAs.
+    ground_truth:
+      expected_sections: ["slideshow.liquid"]
+    scoring:
+      must_mention: ["preset", "width"]
+      must_flag_gaps: false

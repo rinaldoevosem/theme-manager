@@ -1,0 +1,37 @@
+suite: "Navigation"
+cases:
+  - id: "header-mega-menu"
+    title: "Site header with mega menu and search"
+    description: >
+      The main site header with a logo on the left, a navigation menu in the
+      center (with mega-menu dropdowns for some items), and a search icon plus
+      cart icon on the right. Should support multi-level menus.
+    ground_truth:
+      expected_sections: ["header.liquid"]
+    scoring:
+      must_mention: ["header", "menu"]
+      must_flag_gaps: false
+
+  - id: "footer-with-newsletter"
+    title: "Footer with newsletter signup, menu links, and social icons"
+    description: >
+      A site footer with: newsletter email signup form, multiple columns of menu
+      links (Shop, Help, About, etc.), social media icons, payment method icons,
+      and copyright text at the bottom.
+    ground_truth:
+      expected_sections: ["footer.liquid"]
+      acceptable_sections: ["footer-utilities.liquid"]
+    scoring:
+      must_mention: ["footer", "newsletter", "block"]
+      must_flag_gaps: false
+
+  - id: "footer-utilities"
+    title: "Minimal utility footer with copyright and policies"
+    description: >
+      A small utility footer at the very bottom with just copyright text, links
+      to privacy/terms policies, and small social media icons. Minimal styling.
+    ground_truth:
+      expected_sections: ["footer-utilities.liquid"]
+    scoring:
+      must_mention: ["copyright", "policy"]
+      must_flag_gaps: false

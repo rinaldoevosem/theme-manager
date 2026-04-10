@@ -1,0 +1,59 @@
+suite: "Collection Display"
+cases:
+  - id: "collection-bento"
+    title: "Bento grid of collections"
+    description: >
+      An asymmetric bento-style grid showing 5-6 featured collections. Each
+      collection card has an image, the collection name, and a "Shop now" link.
+      Cards are different sizes (some 2x1, some 1x1) to create a magazine layout.
+    ground_truth:
+      expected_sections: ["collection-list.liquid"]
+    scoring:
+      must_mention: ["bento", "preset"]
+      must_flag_gaps: false
+
+  - id: "collection-grid"
+    title: "Symmetric grid of collections (3 or 4 columns)"
+    description: >
+      A clean grid showing all collections in equal-sized cards. 3 columns on
+      desktop, 2 on tablet, 1 on mobile. Each card shows the collection image
+      and name overlaid.
+    ground_truth:
+      expected_sections: ["collection-list.liquid", "main-collection-list.liquid"]
+    scoring:
+      must_mention: ["grid", "columns"]
+      must_flag_gaps: false
+
+  - id: "collection-carousel"
+    title: "Horizontal scrolling collection cards"
+    description: >
+      A carousel of collection cards that scroll horizontally. Shows 3-4 at a
+      time on desktop, with arrow navigation. Each card has an image and name.
+    ground_truth:
+      expected_sections: ["collection-list.liquid", "carousel.liquid"]
+    scoring:
+      must_mention: ["carousel"]
+      must_flag_gaps: false
+
+  - id: "collection-editorial"
+    title: "Editorial-style collection feature with text and image side by side"
+    description: >
+      An editorial layout featuring one collection prominently — a large image
+      on one side and a heading + description + CTA on the other. Magazine-style
+      typography.
+    ground_truth:
+      expected_sections: ["collection-list.liquid", "media-with-content.liquid"]
+    scoring:
+      must_mention: ["editorial"]
+      must_flag_gaps: false
+
+  - id: "collection-spotlight-links"
+    title: "Spotlight collection links with text-only cards"
+    description: >
+      A simple section showing 4-6 collection links in a clean grid. Text-only,
+      no images. Each link is just the collection name with a hover effect.
+    ground_truth:
+      expected_sections: ["collection-links.liquid"]
+    scoring:
+      must_mention: ["link", "text"]
+      must_flag_gaps: false

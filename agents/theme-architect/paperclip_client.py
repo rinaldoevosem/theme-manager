@@ -18,10 +18,11 @@ class PaperclipClient:
         self.base_url = api_url.rstrip("/")
         self.company_url = f"{self.base_url}/api/companies/{company_id}"
         self.agent_id = agent_id
-        self.headers = {
-            "Authorization": f"Bearer {api_key}",
+        self.headers: dict[str, str] = {
             "Content-Type": "application/json",
         }
+        if api_key:
+            self.headers["Authorization"] = f"Bearer {api_key}"
         self._client = httpx.AsyncClient(headers=self.headers, timeout=30)
 
     async def close(self) -> None:
@@ -39,17 +40,22 @@ class PaperclipClient:
         return resp.json()
 
     async def checkout_task(self, task_id: str) -> dict[str, Any]:
-        """Lock a task so no other agent picks it up."""
-        resp = await self._client.post(
-            f"{self.company_url}/issues/{task_id}/checkout"
-        )
-        resp.raise_for_status()
-        return resp.json()
+        """Optional task lock. Best-effort — silently skips if endpoint rejects."""
+        try:
+            resp = await self._client.post(
+                f"{self.base_url}/api/issues/{task_id}/checkout",
+                json={"agentId": self.agent_id, "expectedStatuses": ["todo", "backlog", "in_progress"]},
+            )
+            if resp.status_code < 400:
+                return resp.json()
+        except Exception:
+            pass
+        return {}
 
     async def update_task_status(self, task_id: str, status: str) -> dict[str, Any]:
-        """Update task status: backlog, open, in_progress, blocked, done."""
-        resp = await self._client.post(
-            f"{self.company_url}/issues/{task_id}",
+        """Update task status: backlog, todo, in_progress, in_review, blocked, done, cancelled."""
+        resp = await self._client.patch(
+            f"{self.base_url}/api/issues/{task_id}",
             json={"status": status},
         )
         resp.raise_for_status()
@@ -58,8 +64,8 @@ class PaperclipClient:
     async def post_comment(self, task_id: str, content: str) -> dict[str, Any]:
         """Post a comment/result on a task."""
         resp = await self._client.post(
-            f"{self.company_url}/issues/{task_id}/comments",
-            json={"content": content},
+            f"{self.base_url}/api/issues/{task_id}/comments",
+            json={"body": content},
         )
         resp.raise_for_status()
         return resp.json()

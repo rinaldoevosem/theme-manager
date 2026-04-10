@@ -1,0 +1,72 @@
+suite: "Edge Cases"
+cases:
+  - id: "ambiguous-image-text"
+    title: "A section with image and text"
+    description: >
+      I want a section that has an image and some text next to it.
+    ground_truth:
+      expected_sections: ["media-with-content.liquid", "section.liquid", "hero.liquid"]
+      acceptable_sections: ["collection-list.liquid"]
+    scoring:
+      must_mention: ["image", "text"]
+      must_flag_gaps: false
+
+  - id: "contact-form"
+    title: "Contact form section"
+    description: >
+      A simple contact form with name, email, and message fields. Submits to
+      Shopify and the merchant receives an email.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["contact", "form", "preset"]
+      must_flag_gaps: false
+
+  - id: "email-signup"
+    title: "Newsletter email signup section"
+    description: >
+      A standalone section just for email newsletter signup. Has a heading
+      ("Stay in the loop"), a brief description, and an email input with
+      submit button.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+      acceptable_sections: ["footer.liquid"]
+    scoring:
+      must_mention: ["email", "signup", "preset"]
+      must_flag_gaps: false
+
+  - id: "no-match-quiz"
+    title: "Interactive product finder quiz"
+    description: >
+      An interactive multi-step quiz that asks customers questions (skin type,
+      hair color, etc.) and then recommends products based on their answers.
+      Step-by-step UI with progress indicator.
+    ground_truth:
+      expected_sections: []
+      acceptable_sections: ["custom-liquid.liquid", "section.liquid"]
+    scoring:
+      must_mention: ["custom", "no", "would need"]
+      must_flag_gaps: true
+
+  - id: "image-compare-slider"
+    title: "Before/after image comparison slider"
+    description: >
+      A draggable slider that reveals one image over another (typical "before
+      and after" pattern). Used to show product transformations.
+    ground_truth:
+      expected_sections: ["section.liquid"]
+    scoring:
+      must_mention: ["compare", "preset"]
+      must_flag_gaps: false
+
+  - id: "logo-bar"
+    title: "Brand logo bar — 'as seen in' or trusted partners"
+    description: >
+      A horizontal bar showing 5-8 brand or publication logos. Often used for
+      "As seen in" press mentions or "Trusted by" partner logos.
+    ground_truth:
+      expected_sections: ["logo.liquid", "section.liquid"]
+      acceptable_sections: ["marquee.liquid"]
+    scoring:
+      must_mention: ["logo"]
+      must_flag_gaps: false

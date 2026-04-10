@@ -1,0 +1,52 @@
+suite: "Hero & Banner"
+cases:
+  - id: "hero-video-bg"
+    title: "Full-width hero with video background and overlay CTA"
+    description: >
+      I need a full-width hero section at the top of the homepage with a looping
+      background video, a semi-transparent dark overlay, centered heading and
+      subheading text, and two CTA buttons (primary + secondary). The video should
+      autoplay on desktop. Mobile should fall back to a static image.
+    ground_truth:
+      expected_sections: ["hero.liquid"]
+      acceptable_sections: ["slideshow.liquid"]
+    scoring:
+      must_mention: ["video", "button", "overlay"]
+      must_flag_gaps: false
+
+  - id: "hero-image-marquee"
+    title: "Hero with bold marquee text under main heading"
+    description: >
+      A hero banner with a large background image, a main heading, and a scrolling
+      marquee text element below it (think bold typography moving horizontally).
+      Single CTA button at the bottom.
+    ground_truth:
+      expected_sections: ["hero.liquid"]
+      acceptable_sections: ["marquee.liquid"]
+    scoring:
+      must_mention: ["marquee", "image"]
+      must_flag_gaps: false
+
+  - id: "hero-bottom-aligned"
+    title: "Hero with text aligned to bottom-left"
+    description: >
+      A full-width hero section where all text content (heading, paragraph, button)
+      is aligned to the bottom-left of the image. The image takes up the full
+      viewport height.
+    ground_truth:
+      expected_sections: ["hero.liquid"]
+    scoring:
+      must_mention: ["alignment", "preset"]
+      must_flag_gaps: false
+
+  - id: "announcement-bar"
+    title: "Announcement bar above the header"
+    description: >
+      A thin horizontal bar at the very top of every page that displays rotating
+      announcement messages (free shipping, current promo, etc.). Should support
+      multiple messages that rotate every few seconds.
+    ground_truth:
+      expected_sections: ["header-announcements.liquid"]
+    scoring:
+      must_mention: ["announcement"]
+      must_flag_gaps: false

@@ -1,0 +1,34 @@
+suite: "Blog"
+cases:
+  - id: "blog-featured-grid"
+    title: "Featured blog posts in a grid"
+    description: >
+      A homepage section showing the 3-4 most recent blog posts as cards. Each
+      card has the article image, title, excerpt, and read-more link. Grid layout.
+    ground_truth:
+      expected_sections: ["featured-blog-posts.liquid"]
+    scoring:
+      must_mention: ["blog", "grid"]
+      must_flag_gaps: false
+
+  - id: "blog-carousel"
+    title: "Horizontal carousel of blog post cards"
+    description: >
+      A carousel of blog post cards that scrolls horizontally. Each card shows
+      the post image, title, and date. Arrow navigation and swipe support.
+    ground_truth:
+      expected_sections: ["featured-blog-posts.liquid"]
+    scoring:
+      must_mention: ["blog", "carousel"]
+      must_flag_gaps: false
+
+  - id: "blog-editorial"
+    title: "Editorial blog showcase with one big feature post"
+    description: >
+      A magazine-style blog section with one large featured post (image + title +
+      excerpt) on one side and 2-3 smaller posts on the other. Editorial layout.
+    ground_truth:
+      expected_sections: ["featured-blog-posts.liquid"]
+    scoring:
+      must_mention: ["blog", "editorial"]
+      must_flag_gaps: false

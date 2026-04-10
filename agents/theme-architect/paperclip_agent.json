@@ -1,6 +1,6 @@
 {
   "name": "Theme Architect",
-  "id": "theme-architect",
+  "id": "79f078a4-3d41-4bc1-bd58-041b93a9f015",
   "description": "Analyzes Shopify theme architecture and matches Figma designs to existing sections. Read-only — never modifies theme files.",
   "role": "Theme Architect / Design-to-Section Mapper",
   "department": "Engineering",
