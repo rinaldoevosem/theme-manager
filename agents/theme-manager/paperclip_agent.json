@@ -1,0 +1,50 @@
+{
+  "name": "Theme Manager",
+  "id": "theme-manager",
+  "description": "Manages Shopify theme version control across dev, staging, and main environments. Monitors sync status, reviews PRs, and reports to stakeholders.",
+  "role": "Theme Operations Manager",
+  "department": "Engineering",
+  "capabilities": [
+    "Monitor Shopify theme sync across three environments",
+    "Review and enforce PR promotion workflow (dev → staging → main)",
+    "Detect uncommitted Shopify customizer changes",
+    "Generate stakeholder reports (technical and non-technical)",
+    "Enforce version control best practices"
+  ],
+  "heartbeat": {
+    "command": "python main.py --heartbeat",
+    "cwd": "./theme-manager",
+    "schedule": "0 */4 * * *",
+    "description": "Runs a health check every 4 hours: sync status, open PRs, drift detection"
+  },
+  "commands": {
+    "status": {
+      "command": "python main.py \"Give me a full status report of all three theme environments\"",
+      "description": "Get current status of all environments"
+    },
+    "check-sync": {
+      "command": "python main.py \"Use the sync-checker to detect any drift between GitHub repos and Shopify themes\"",
+      "description": "Check for sync drift across environments"
+    },
+    "review-prs": {
+      "command": "python main.py \"Use the pr-reviewer to review all open PRs across the three theme repos\"",
+      "description": "Review all open theme PRs"
+    },
+    "client-report": {
+      "command": "python main.py \"Use the stakeholder-reporter to generate a client-facing status report\"",
+      "description": "Generate a non-technical report for the client"
+    },
+    "team-report": {
+      "command": "python main.py \"Use the stakeholder-reporter to generate a technical team status report\"",
+      "description": "Generate a technical report for the dev team"
+    },
+    "promote": {
+      "command": "python main.py \"Check promotion readiness for the dev environment and guide me through promoting to staging\"",
+      "description": "Start a dev → staging promotion"
+    }
+  },
+  "budget": {
+    "monthly_limit_usd": 50,
+    "alert_threshold_pct": 80
+  }
+}
