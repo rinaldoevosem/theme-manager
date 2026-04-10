@@ -10,6 +10,7 @@ Run via Paperclip heartbeat:
 import argparse
 import asyncio
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -48,8 +49,13 @@ def resolve_project_dir(store_domain: str) -> Path:
     return PROJECTS_ROOT / slug
 
 
-def build_options() -> ClaudeAgentOptions:
-    """Build the agent options — read-only tools only."""
+def build_options(model: str | None = None) -> ClaudeAgentOptions:
+    """Build the agent options — read-only tools only.
+
+    Args:
+        model: Optional model override (e.g. 'claude-opus-4-6', 'claude-sonnet-4-6').
+               If None, uses the SDK/CLI default (Sonnet).
+    """
     allowed_tools = [
         # Read-only filesystem tools
         "Read",
@@ -82,21 +88,23 @@ def build_options() -> ClaudeAgentOptions:
             # McpServerConfig not available in this SDK version — skip
             pass
 
-    return ClaudeAgentOptions(
-        system_prompt=SYSTEM_PROMPT,
-        permission_mode="default",
-        allowed_tools=allowed_tools,
-        mcp_servers=mcp_servers,
-        agents=subagents,
-        env={
-            "GITHUB_TOKEN": config.github_token,
-        },
-    )
+    opts: dict = {
+        "system_prompt": SYSTEM_PROMPT,
+        "permission_mode": "default",
+        "allowed_tools": allowed_tools,
+        "mcp_servers": mcp_servers,
+        "agents": subagents,
+        "env": {"GITHUB_TOKEN": config.github_token},
+    }
+    if model:
+        opts["model"] = model
+
+    return ClaudeAgentOptions(**opts)
 
 
-async def run_prompt(prompt: str) -> str | None:
+async def run_prompt(prompt: str, model: str | None = None) -> str | None:
     """Run a single prompt through the theme architect agent and return the result."""
-    options = build_options()
+    options = build_options(model=model)
     result_text: str | None = None
 
     async for message in query(prompt=prompt, options=options):
@@ -172,9 +180,9 @@ def _write_heartbeat_output(result: str | None) -> None:
     print(f"[heartbeat] Output written to {output_path}", flush=True)
 
 
-async def heartbeat() -> None:
+async def heartbeat(model: str | None = None) -> None:
     """Paperclip heartbeat mode."""
-    print("[heartbeat] Theme Architect waking up...", flush=True)
+    print(f"[heartbeat] Theme Architect waking up... (model={model or 'default'})", flush=True)
 
     if config.paperclip_company_id:
         from paperclip_client import PaperclipClient
@@ -186,16 +194,16 @@ async def heartbeat() -> None:
             agent_id=config.paperclip_agent_id,
         )
         try:
-            await _heartbeat_with_paperclip(client)
+            await _heartbeat_with_paperclip(client, model=model)
         finally:
             await client.close()
     else:
         print("[heartbeat] No Paperclip credentials — running standalone health check", flush=True)
-        result = await run_prompt(_health_check_prompt())
+        result = await run_prompt(_health_check_prompt(), model=model)
         _write_heartbeat_output(result)
 
 
-async def _heartbeat_with_paperclip(client) -> None:
+async def _heartbeat_with_paperclip(client, model: str | None = None) -> None:
     """Run heartbeat with full Paperclip task lifecycle integration."""
     all_tasks = await client.fetch_assigned_tasks()
     # Only process tasks in 'todo' status — skip done, in_progress (already executing
@@ -239,7 +247,7 @@ async def _heartbeat_with_paperclip(client) -> None:
                 config_module.config = store_config
 
             try:
-                result = await run_prompt(_build_task_prompt(task))
+                result = await run_prompt(_build_task_prompt(task), model=model)
                 await client.post_comment(task_id, result or "Task completed — no output.")
                 await client.update_task_status(task_id, "done")
                 print(f"[heartbeat] Completed: {title}", flush=True)
@@ -250,7 +258,7 @@ async def _heartbeat_with_paperclip(client) -> None:
                 await client.update_task_status(task_id, "blocked")
     else:
         print("[heartbeat] No assigned tasks — running health check", flush=True)
-        result = await run_prompt(_health_check_prompt())
+        result = await run_prompt(_health_check_prompt(), model=model)
 
     _write_heartbeat_output(result)
 
@@ -263,12 +271,21 @@ def main() -> None:
         action="store_true",
         help="Run in Paperclip heartbeat mode (automated health check)",
     )
+    parser.add_argument(
+        "--model",
+        help="Override the model (e.g. claude-opus-4-6, claude-sonnet-4-6). "
+             "Can also be set via THEME_ARCHITECT_MODEL env var. "
+             "Defaults to the Claude CLI default (Sonnet).",
+    )
     args = parser.parse_args()
 
+    # Model precedence: --model flag > env var > None (SDK default)
+    model = args.model or os.getenv("THEME_ARCHITECT_MODEL") or None
+
     if args.heartbeat:
-        asyncio.run(heartbeat())
+        asyncio.run(heartbeat(model=model))
     elif args.prompt:
-        asyncio.run(run_prompt(args.prompt))
+        asyncio.run(run_prompt(args.prompt, model=model))
     else:
         parser.print_help()
         sys.exit(1)

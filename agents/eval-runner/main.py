@@ -230,18 +230,31 @@ async def collect_results(
 # ----------------------------------------------------------------------------
 
 
-async def cleanup_eval_tasks(client: PaperclipClient) -> int:
-    """Delete all issues with [EVAL:...] prefix in title."""
+async def cleanup_eval_tasks(client: PaperclipClient) -> dict:
+    """Delete non-done [EVAL:...] tasks. Done tasks are kept as historical records."""
     issues = await client.list_issues()
     deleted = 0
+    kept_done = 0
+    failed = 0
+
     for issue in issues:
         title = issue.get("title", "")
-        if title.startswith("[EVAL:"):
-            ok = await client.delete_issue(issue["id"])
-            if ok:
-                deleted += 1
-                print(f"[delete] {issue.get('identifier', issue['id'])}: {title}")
-    return deleted
+        if not title.startswith("[EVAL:"):
+            continue
+
+        status = issue.get("status", "")
+        if status == "done":
+            kept_done += 1
+            continue
+
+        ok = await client.delete_issue(issue["id"])
+        if ok:
+            deleted += 1
+            print(f"[delete] {issue.get('identifier', issue['id'])}: {title}")
+        else:
+            failed += 1
+
+    return {"deleted": deleted, "kept_done": kept_done, "failed": failed}
 
 
 # ----------------------------------------------------------------------------
@@ -417,8 +430,12 @@ def main() -> None:
         async def _cleanup():
             client = PaperclipClient(config.paperclip_url, config.company_id)
             try:
-                n = await cleanup_eval_tasks(client)
-                print(f"[cleanup] Deleted {n} eval tasks")
+                stats = await cleanup_eval_tasks(client)
+                print(
+                    f"[cleanup] Deleted {stats['deleted']} active eval tasks "
+                    f"(kept {stats['kept_done']} done as historical records, "
+                    f"{stats['failed']} failed)"
+                )
             finally:
                 await client.close()
         asyncio.run(_cleanup())
