@@ -1,0 +1,42 @@
+{
+  "name": "Theme Architect",
+  "id": "theme-architect",
+  "description": "Analyzes Shopify theme architecture and matches Figma designs to existing sections. Read-only — never modifies theme files.",
+  "role": "Theme Architect / Design-to-Section Mapper",
+  "department": "Engineering",
+  "capabilities": [
+    "Analyze Shopify theme architecture (sections, blocks, templates, snippets)",
+    "Interpret Figma designs and extract structural requirements",
+    "Match designs to existing theme sections with scoring",
+    "Deep-dive into section schemas, block types, and settings",
+    "Look up Shopify Liquid and theme documentation via shopify-dev"
+  ],
+  "heartbeat": {
+    "command": "python main.py --heartbeat",
+    "cwd": "./theme-architect",
+    "schedule": "0 */6 * * *",
+    "description": "Runs every 6 hours: checks for assigned design-analysis tasks, runs architecture health check"
+  },
+  "commands": {
+    "analyze-theme": {
+      "command": "python main.py \"Analyze the full theme architecture and provide a summary of all sections, their block types, and capabilities\"",
+      "description": "Get a full architectural overview of the theme"
+    },
+    "match-design": {
+      "command": "python main.py \"Match this Figma design to the best existing section: {figma_url}\"",
+      "description": "Match a Figma design to existing theme sections"
+    },
+    "section-detail": {
+      "command": "python main.py \"Give me a detailed analysis of the {section_name} section including all blocks, settings, and snippet dependencies\"",
+      "description": "Deep-dive into a specific section's capabilities"
+    },
+    "design-requirements": {
+      "command": "python main.py \"Extract the structural requirements from this design: {description}\"",
+      "description": "Extract block/setting requirements from a design description"
+    }
+  },
+  "budget": {
+    "monthly_limit_usd": 30,
+    "alert_threshold_pct": 80
+  }
+}
