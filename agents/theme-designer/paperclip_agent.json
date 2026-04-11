@@ -1,0 +1,39 @@
+{
+  "name": "Theme Designer",
+  "id": "a7e3b1c4-5f92-4d8a-b6e1-2c9d0f3a8b57",
+  "description": "Translates Figma design guidelines into Shopify theme settings. Reads design tokens from Figma, maps them to theme settings, and updates settings_data.json with validated values.",
+  "role": "Design-to-Settings Mapper",
+  "department": "Design Engineering",
+  "capabilities": [
+    "Extract design tokens from Figma design files (fonts, colors, typography, buttons)",
+    "Map font families to Shopify font library identifiers",
+    "Map color palettes to theme color schemes",
+    "Map typography scale to theme heading/paragraph settings",
+    "Validate all setting values against schema constraints",
+    "Update settings_data.json with backup and detailed change reporting"
+  ],
+  "heartbeat": {
+    "command": "python main.py --heartbeat",
+    "cwd": "./theme-designer",
+    "schedule": "0 */6 * * *",
+    "description": "Runs every 6 hours: checks for assigned design tasks, applies design tokens from Figma"
+  },
+  "commands": {
+    "apply-design": {
+      "command": "python main.py \"Apply the design tokens from this Figma file to the theme settings: {figma_url}\"",
+      "description": "Apply design tokens from a Figma URL to the theme"
+    },
+    "preview-changes": {
+      "command": "python main.py --dry-run \"Preview what changes would be made from this Figma design: {figma_url}\"",
+      "description": "Preview changes without writing (dry run)"
+    },
+    "parse-schema": {
+      "command": "python main.py \"Parse and summarize all configurable theme settings from settings_schema.json\"",
+      "description": "Inspect all available theme settings and their current values"
+    }
+  },
+  "budget": {
+    "monthly_limit_usd": 40,
+    "alert_threshold_pct": 80
+  }
+}
