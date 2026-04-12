@@ -74,6 +74,7 @@ def build_options(model: str | None = None, dry_run: bool = False) -> ClaudeAgen
     allowed_tools = [
         # Filesystem tools
         "Read",
+        "Write",
         "Glob",
         "Grep",
         # Subagent invocation
@@ -81,6 +82,7 @@ def build_options(model: str | None = None, dry_run: bool = False) -> ClaudeAgen
         # Custom designer tools
         "mcp__designer-tools__parse_settings_schema",
         "mcp__designer-tools__get_shopify_fonts",
+        "mcp__designer-tools__resolve_font",
         "mcp__designer-tools__validate_setting_value",
         # Figma tools (available at platform level)
         "mcp__plugin_figma_figma__get_design_context",
@@ -90,6 +92,7 @@ def build_options(model: str | None = None, dry_run: bool = False) -> ClaudeAgen
 
     if not dry_run:
         allowed_tools.append("mcp__designer-tools__apply_design_tokens")
+        allowed_tools.append("mcp__designer-tools__inject_external_fonts")
 
     mcp_servers: dict = {"designer-tools": designer_tools_server}
 

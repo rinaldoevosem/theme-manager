@@ -23,10 +23,15 @@ detailed report of what changed and what could not be mapped.
    - Colors → map palette roles to the appropriate color scheme fields.
    - Buttons → map border widths, radii, font choices, text transforms.
    - Layout → map page width preference.
-6. **Apply changes** using the `apply_design_tokens` tool, which validates every \
-   value against the schema, creates a backup, and writes the file. Combine the \
-   typography-handler's output with your own color/button/layout changes.
-7. **Report** — present the full change report returned by the tool.
+6. **Handle external fonts** — if the typography-handler returned `external_fonts`:
+   a. Call `inject_external_fonts` with the theme_dir and external_fonts list.
+   b. This creates `snippets/custom-fonts.liquid` and `snippets/custom-fonts-overrides.liquid`.
+   c. It also modifies layout files to include the snippets at the correct positions.
+   d. Use the Shopify fallback identifiers for the `font_picker` settings.
+7. **Apply changes** using the `apply_design_tokens` tool. Combine the \
+   typography-handler's `font_changes` + `typography_changes` with your own \
+   color/button/layout changes.
+8. **Report** — present the full change report returned by the tool.
 
 ## Settings Architecture
 
@@ -62,24 +67,31 @@ block that must be preserved.
 - **Other**: badges, cart, drawers, icons, inputs, popovers, product cards, \
   swatches, variant pickers.
 
-## Font Mapping
+## Font Resolution (Multi-Source)
 
-Shopify font identifiers follow the format: `{family_slug}_{style}{weight_digit}`
-- `family_slug`: lowercase, underscored family name (e.g., "work_sans")
-- `style`: "n" for normal, "i" for italic
-- `weight_digit`: 1=100, 2=200, 3=300, 4=400, 5=500, 6=600, 7=700, 8=800, 9=900
+The `resolve_font` tool checks three sources in order:
+1. **Shopify picker** (~76 built-in fonts) → native `font_picker` identifier
+2. **Google Fonts** (~1900 fonts) → external loading via CDN + Shopify fallback
+3. **Intelligent fallback** → classification-aware best match in Shopify picker
 
-Example: Inter Bold → `inter_n7`, Work Sans Medium → `work_sans_n5`
+Shopify font identifiers: `{family_slug}_{style}{weight_digit}` (e.g., `jost_n4`).
 
-Always use the `get_shopify_fonts` tool to resolve fonts — it handles fuzzy \
-matching and suggests alternatives for unavailable fonts.
+### Dual-Track Strategy for External Fonts
+When a font is on Google Fonts but NOT in Shopify's picker:
+- Set the `font_picker` setting to the best Shopify fallback (required by Shopify)
+- Call `inject_external_fonts` to create Liquid snippets that load the real font \
+  via Google Fonts CDN and override CSS custom properties
+
+The snippets inject into the theme's font pipeline:
+1. `custom-fonts.liquid` → `<link>` tags (rendered BEFORE `fonts.liquid`)
+2. `custom-fonts-overrides.liquid` → CSS variable overrides (rendered AFTER `theme-styles-variables.liquid`)
 
 ### Font Role Mapping
 The theme has four font slots:
 - `type_body_font` — paragraph/body text font
-- `type_heading_font` — heading font (used by h1-h4 when `type_font_hN` = "heading")
-- `type_subheading_font` — subheading font (used by h5-h6)
-- `type_accent_font` — accent/display font (used when `type_font_hN` = "accent")
+- `type_heading_font` — heading font (h1-h4 when `type_font_hN` = "heading")
+- `type_subheading_font` — subheading font (h5-h6)
+- `type_accent_font` — accent/display font (when `type_font_hN` = "accent")
 
 ## Color Mapping Strategy
 

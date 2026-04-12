@@ -94,17 +94,44 @@ SHOPIFY_FONTS: dict[str, dict[str, Any]] = {
     "hanken_grotesk": {"weights": [100, 200, 300, 400, 500, 600, 700, 800, 900], "has_italic": True},
 }
 
-# Font classification for fallback suggestions
+# Font classification for fallback suggestions (all 76 SHOPIFY_FONTS classified)
 FONT_CLASSIFICATIONS: dict[str, list[str]] = {
-    "geometric_sans": ["inter", "work_sans", "montserrat", "raleway", "nunito", "poppins", "quicksand", "jost", "outfit", "sora"],
-    "humanist_sans": ["open_sans", "lato", "source_sans_pro", "noto_sans", "fira_sans", "cabin", "pt_sans", "dm_sans", "plus_jakarta_sans"],
-    "neo_grotesque": ["roboto", "barlow", "arimo", "ibm_plex_sans", "overpass", "chivo", "hanken_grotesk"],
-    "serif_transitional": ["merriweather", "noto_serif", "pt_serif", "source_serif_pro", "ibm_plex_serif", "vollkorn"],
+    "geometric_sans": ["inter", "work_sans", "montserrat", "raleway", "nunito", "nunito_sans", "poppins", "quicksand", "jost", "outfit", "sora", "josefin_sans", "lexend", "albert_sans", "manrope"],
+    "humanist_sans": ["open_sans", "lato", "source_sans_pro", "noto_sans", "fira_sans", "cabin", "pt_sans", "dm_sans", "plus_jakarta_sans", "karla", "merriweather_sans", "assistant", "hind", "maven_pro", "red_hat_text", "mulish"],
+    "neo_grotesque": ["roboto", "barlow", "arimo", "ibm_plex_sans", "overpass", "chivo", "hanken_grotesk", "libre_franklin", "archivo", "archivo_narrow", "rubik", "space_grotesk", "titillium_web", "ubuntu"],
+    "serif_transitional": ["merriweather", "noto_serif", "pt_serif", "source_serif_pro", "ibm_plex_serif", "vollkorn", "bitter"],
     "serif_old_style": ["cormorant_garamond", "eb_garamond", "crimson_text", "crimson_pro", "libre_baskerville", "old_standard_tt", "spectral"],
-    "serif_display": ["playfair_display", "dm_serif_display", "fraunces", "lora"],
+    "serif_display": ["playfair_display", "dm_serif_display", "dm_serif_text", "fraunces", "lora"],
+    "serif_slab": ["josefin_slab"],
     "monospace": ["anonymous_pro", "source_code_pro", "fira_code", "ibm_plex_mono", "space_mono"],
-    "display": ["oswald", "bebas_neue", "anton", "league_spartan", "yanone_kaffeesatz"],
+    "display_condensed": ["oswald", "bebas_neue", "anton", "league_spartan", "yanone_kaffeesatz", "red_hat_display"],
 }
+
+# Map Google Fonts categories to our classification groups for fallback
+_CATEGORY_TO_CLASSIFICATION: dict[str, str] = {
+    "sans-serif": "humanist_sans",
+    "serif": "serif_transitional",
+    "display": "display_condensed",
+    "handwriting": "display_condensed",
+    "monospace": "monospace",
+}
+
+# Path to the Google Fonts dataset
+_GOOGLE_FONTS_PATH = Path(__file__).parent / "data" / "google_fonts.json"
+_google_fonts_cache: dict | None = None
+
+
+def _load_google_fonts() -> dict:
+    """Load the Google Fonts dataset (cached)."""
+    global _google_fonts_cache
+    if _google_fonts_cache is None:
+        if _GOOGLE_FONTS_PATH.exists():
+            _google_fonts_cache = json.loads(
+                _GOOGLE_FONTS_PATH.read_text(encoding="utf-8")
+            ).get("fonts", {})
+        else:
+            _google_fonts_cache = {}
+    return _google_fonts_cache
 
 # Non-configurable setting types (skipped during schema parsing)
 _SKIP_TYPES = {"header", "paragraph"}
@@ -515,6 +542,216 @@ async def get_shopify_fonts(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# MCP Tool 2b: resolve_font (multi-source, replaces get_shopify_fonts)
+# ---------------------------------------------------------------------------
+
+def _best_shopify_fallback(classification: str, category: str, weight: int, italic: bool) -> dict | None:
+    """Find the best Shopify picker font for a given classification/category."""
+    style = "i" if italic else "n"
+
+    # First: try fonts in the same classification that are in the Shopify picker
+    class_fonts = FONT_CLASSIFICATIONS.get(classification, [])
+    for slug in class_fonts:
+        if slug in SHOPIFY_FONTS:
+            font_data = SHOPIFY_FONTS[slug]
+            snapped = _snap_weight(weight, font_data["weights"])
+            if italic and not font_data["has_italic"]:
+                actual_style = "n"
+            else:
+                actual_style = style
+            digit = _weight_to_digit(snapped)
+            return {
+                "identifier": f"{slug}_{actual_style}{digit}",
+                "family": slug.replace("_", " ").title(),
+                "slug": slug,
+                "classification": classification,
+                "weight": snapped,
+            }
+
+    # Second: try the default classification for the Google Fonts category
+    fallback_class = _CATEGORY_TO_CLASSIFICATION.get(category, "humanist_sans")
+    for slug in FONT_CLASSIFICATIONS.get(fallback_class, []):
+        if slug in SHOPIFY_FONTS:
+            font_data = SHOPIFY_FONTS[slug]
+            snapped = _snap_weight(weight, font_data["weights"])
+            digit = _weight_to_digit(snapped)
+            return {
+                "identifier": f"{slug}_n{digit}",
+                "family": slug.replace("_", " ").title(),
+                "slug": slug,
+                "classification": fallback_class,
+                "weight": snapped,
+            }
+
+    # Last resort: inter
+    return {
+        "identifier": f"inter_n{_weight_to_digit(weight)}",
+        "family": "Inter",
+        "slug": "inter",
+        "classification": "geometric_sans",
+        "weight": _snap_weight(weight, SHOPIFY_FONTS["inter"]["weights"]),
+    }
+
+
+@tool(
+    name="resolve_font",
+    description=(
+        "Resolve a font family against multiple sources: Shopify's built-in "
+        "font picker library, Google Fonts catalog (~1900 fonts), or fallback "
+        "to the best visual match. Returns the resolution strategy, a Shopify "
+        "font_picker identifier (always, even for external fonts as a fallback), "
+        "and external loading instructions if needed.\n\n"
+        "Use this tool instead of get_shopify_fonts for comprehensive font resolution."
+    ),
+    input_schema={
+        "font_family": str,
+        "weight": int,
+        "italic": bool,
+        "role": str,
+    },
+    annotations=ToolAnnotations(readOnlyHint=True),
+)
+async def resolve_font(args: dict[str, Any]) -> dict[str, Any]:
+    family = args.get("font_family", "")
+    weight = args.get("weight", 400)
+    italic = args.get("italic", False)
+    role = args.get("role", "body")
+
+    slug = _normalize_font_family(family)
+    style = "i" if italic else "n"
+
+    result: dict[str, Any] = {
+        "requested": {"family": family, "weight": weight, "italic": italic, "role": role},
+    }
+
+    # --- Strategy 1: Shopify picker exact match ---
+    if slug in SHOPIFY_FONTS:
+        font_data = SHOPIFY_FONTS[slug]
+        if italic and not font_data["has_italic"]:
+            actual_style = "n"
+            result["italic_note"] = f"{family} has no italic in Shopify; using normal"
+        else:
+            actual_style = style
+        snapped = _snap_weight(weight, font_data["weights"])
+        digit = _weight_to_digit(snapped)
+        identifier = f"{slug}_{actual_style}{digit}"
+        classification = _find_font_classification(slug) or "uncategorized"
+
+        result["resolution"] = {
+            "strategy": "shopify_picker",
+            "shopify_identifier": identifier,
+            "css_family_name": font_data.get("family", family),
+            "weight": snapped,
+            "style": actual_style,
+            "classification": classification,
+            "external_load": None,
+        }
+        if snapped != weight:
+            result["weight_note"] = f"Snapped {weight} to closest: {snapped}"
+        result["fallback_alternatives"] = []
+        return {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}
+
+    # --- Strategy 2: Google Fonts (not in Shopify picker) ---
+    google_fonts = _load_google_fonts()
+    gf_entry = google_fonts.get(slug)
+
+    if gf_entry and gf_entry.get("css_url"):
+        gf_weights = gf_entry.get("weights", [400])
+        gf_has_italic = gf_entry.get("has_italic", False)
+        snapped = _snap_weight(weight, gf_weights) if gf_weights else weight
+        classification = gf_entry.get("classification", "uncategorized")
+        category = gf_entry.get("category", "sans-serif")
+
+        # Find the best Shopify picker fallback
+        fallback = _best_shopify_fallback(classification, category, weight, italic)
+
+        result["resolution"] = {
+            "strategy": "google_fonts_external",
+            "shopify_identifier": fallback["identifier"] if fallback else f"inter_n{_weight_to_digit(weight)}",
+            "css_family_name": gf_entry["family"],
+            "weight": snapped,
+            "style": "italic" if (italic and gf_has_italic) else "normal",
+            "classification": classification,
+            "external_load": {
+                "type": "google_fonts",
+                "css_url": gf_entry["css_url"],
+                "family_name": gf_entry["family"],
+                "weights": gf_weights,
+                "has_italic": gf_has_italic,
+            },
+        }
+        result["shopify_fallback"] = fallback
+        result["fallback_alternatives"] = []
+        return {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}
+
+    # --- Strategy 3: Classification-aware fallback ---
+    # Font not in Shopify picker OR Google Fonts. Use classification to find best match.
+    # Try to infer classification from the font name
+    inferred_class = None
+    # Check if the name contains hints
+    name_lower = family.lower()
+    if any(kw in name_lower for kw in ["mono", "code"]):
+        inferred_class = "monospace"
+    elif any(kw in name_lower for kw in ["slab"]):
+        inferred_class = "serif_slab"
+    elif any(kw in name_lower for kw in ["serif", "garamond", "baskerville", "caslon", "bodoni", "didot", "times"]):
+        inferred_class = "serif_display"
+    elif any(kw in name_lower for kw in ["display", "poster", "headline"]):
+        inferred_class = "display_condensed"
+    elif any(kw in name_lower for kw in ["condensed", "narrow", "compressed"]):
+        inferred_class = "display_condensed"
+    elif any(kw in name_lower for kw in ["sans", "grotesk", "gothic"]):
+        inferred_class = "neo_grotesque"
+
+    # If no hint from name, infer from role
+    if not inferred_class:
+        role_class_map = {
+            "heading": "serif_display",
+            "accent": "serif_display",
+            "body": "humanist_sans",
+            "subheading": "humanist_sans",
+        }
+        inferred_class = role_class_map.get(role, "humanist_sans")
+
+    fallback = _best_shopify_fallback(inferred_class, "sans-serif", weight, italic)
+
+    # Build alternatives from the inferred classification
+    alternatives = []
+    for alt_slug in FONT_CLASSIFICATIONS.get(inferred_class, []):
+        if alt_slug in SHOPIFY_FONTS and alt_slug != (fallback or {}).get("slug"):
+            alt_data = SHOPIFY_FONTS[alt_slug]
+            alt_weight = _snap_weight(weight, alt_data["weights"])
+            alt_digit = _weight_to_digit(alt_weight)
+            alt_style = style if (style == "n" or alt_data["has_italic"]) else "n"
+            alternatives.append({
+                "identifier": f"{alt_slug}_{alt_style}{alt_digit}",
+                "family": alt_slug.replace("_", " ").title(),
+                "classification": inferred_class,
+            })
+            if len(alternatives) >= 4:
+                break
+
+    result["resolution"] = {
+        "strategy": "fallback",
+        "shopify_identifier": fallback["identifier"] if fallback else f"inter_n{_weight_to_digit(weight)}",
+        "css_family_name": fallback["family"] if fallback else "Inter",
+        "weight": fallback["weight"] if fallback else weight,
+        "style": "normal",
+        "classification": inferred_class,
+        "external_load": None,
+    }
+    result["fallback_reason"] = (
+        f"'{family}' not found in Shopify picker or Google Fonts catalog. "
+        f"Inferred classification: {inferred_class}. "
+        f"Best Shopify fallback: {fallback['family'] if fallback else 'Inter'}"
+    )
+    result["shopify_fallback"] = fallback
+    result["fallback_alternatives"] = alternatives
+
+    return {"content": [{"type": "text", "text": json.dumps(result, indent=2)}]}
+
+
+# ---------------------------------------------------------------------------
 # MCP Tool 3: validate_setting_value
 # ---------------------------------------------------------------------------
 
@@ -719,11 +956,207 @@ async def apply_design_tokens(args: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# MCP Tool 5: inject_external_fonts
+# ---------------------------------------------------------------------------
+
+_CUSTOM_FONTS_HEADER = """\
+{%- comment -%}
+  Custom fonts loaded by the Theme Designer agent.
+  Fonts not available in Shopify's built-in font picker are loaded
+  from external sources (Google Fonts, Adobe Fonts).
+  Do not remove — sections reference these fonts via CSS variables.
+{%- endcomment -%}
+"""
+
+_CUSTOM_OVERRIDES_HEADER = """\
+{%- comment -%}
+  CSS custom property overrides for external fonts.
+  Generated by the Theme Designer agent. Rendered AFTER
+  theme-styles-variables.liquid to override Shopify's defaults.
+{%- endcomment -%}
+"""
+
+_FONT_ROLE_TO_CSS_VAR: dict[str, str] = {
+    "heading": "--font-heading--family",
+    "body": "--font-body--family",
+    "subheading": "--font-subheading--family",
+    "accent": "--font-accent--family",
+}
+
+_CATEGORY_TO_GENERIC: dict[str, str] = {
+    "sans-serif": "sans-serif",
+    "serif": "serif",
+    "monospace": "monospace",
+    "display": "sans-serif",
+    "handwriting": "cursive",
+}
+
+
+def _inject_render_tag(file_path: Path, tag_name: str, before: str | None = None, after: str | None = None) -> bool:
+    """Inject a {%- render 'tag_name' -%} line into a Liquid file if not already present."""
+    content = file_path.read_text(encoding="utf-8", errors="replace")
+    render_line = f"{{% render '{tag_name}' %}}"
+    render_line_dash = f"{{%- render '{tag_name}' -%}}"
+
+    if tag_name in content:
+        return False  # Already present
+
+    if before:
+        # Insert BEFORE the target line
+        idx = content.find(before)
+        if idx >= 0:
+            content = content[:idx] + f"    {{%- render '{tag_name}' -%}}\n    " + content[idx:]
+            file_path.write_text(content, encoding="utf-8")
+            return True
+
+    if after:
+        # Insert AFTER the target line
+        idx = content.find(after)
+        if idx >= 0:
+            end_of_line = content.find("\n", idx)
+            if end_of_line >= 0:
+                content = content[:end_of_line + 1] + f"    {{%- render '{tag_name}' -%}}\n" + content[end_of_line + 1:]
+                file_path.write_text(content, encoding="utf-8")
+                return True
+
+    return False
+
+
+@tool(
+    name="inject_external_fonts",
+    description=(
+        "Create Liquid snippets to load external fonts (Google Fonts) and "
+        "override CSS custom properties. Also injects render tags into layout "
+        "files at the correct positions.\n\n"
+        "Creates: snippets/custom-fonts.liquid (font loading) and "
+        "snippets/custom-fonts-overrides.liquid (CSS variable overrides).\n\n"
+        "Modifies: layout/theme.liquid, layout/password.liquid to include "
+        "the new snippets at the correct positions in the font loading pipeline."
+    ),
+    input_schema={
+        "theme_dir": str,
+        "external_fonts": list,
+    },
+    annotations=ToolAnnotations(readOnlyHint=False),
+)
+async def inject_external_fonts(args: dict[str, Any]) -> dict[str, Any]:
+    theme_dir = Path(args.get("theme_dir", ""))
+    external_fonts = args.get("external_fonts", [])
+
+    if not theme_dir.is_dir():
+        return {"content": [{"type": "text", "text": f"Theme dir not found: {theme_dir}"}], "isError": True}
+    if not external_fonts:
+        return {"content": [{"type": "text", "text": "No external fonts to inject"}], "isError": True}
+
+    snippets_dir = theme_dir / "snippets"
+    layout_dir = theme_dir / "layout"
+
+    # --- Build custom-fonts.liquid ---
+    font_links = [_CUSTOM_FONTS_HEADER]
+    font_links.append('<link rel="preconnect" href="https://fonts.googleapis.com">')
+    font_links.append('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>')
+    font_links.append("")
+
+    google_urls = []
+    for font in external_fonts:
+        source = font.get("source", "google_fonts")
+        if source == "google_fonts":
+            css_url = font.get("css_url", "")
+            family_name = font.get("family_name", "")
+            if css_url:
+                font_links.append(f'{{% comment %}} {family_name} {{% endcomment %}}')
+                font_links.append(f'<link rel="stylesheet" href="{css_url}" media="print" onload="this.media=\'all\'">')
+                font_links.append(f'<noscript><link rel="stylesheet" href="{css_url}"></noscript>')
+                font_links.append("")
+                google_urls.append(css_url)
+
+    custom_fonts_content = "\n".join(font_links)
+    custom_fonts_path = snippets_dir / "custom-fonts.liquid"
+    custom_fonts_path.write_text(custom_fonts_content, encoding="utf-8")
+
+    # --- Build custom-fonts-overrides.liquid ---
+    override_lines = [_CUSTOM_OVERRIDES_HEADER, "{% style %}", "  :root {"]
+
+    for font in external_fonts:
+        role = font.get("role", "")
+        css_var = _FONT_ROLE_TO_CSS_VAR.get(role)
+        if not css_var:
+            continue
+
+        family_name = font.get("family_name", font.get("css_family_name", ""))
+        fallback_family = font.get("fallback_shopify_family", "")
+        generic = font.get("generic_family", "sans-serif")
+
+        # Build font stack: external font, Shopify fallback, generic
+        stack_parts = [f'"{family_name}"']
+        if fallback_family:
+            stack_parts.append(f'"{fallback_family}"')
+        stack_parts.append(generic)
+        font_stack = ", ".join(stack_parts)
+
+        override_lines.append(f"    {css_var}: {font_stack};")
+
+    override_lines.extend(["  }", "{% endstyle %}", ""])
+    overrides_content = "\n".join(override_lines)
+    overrides_path = snippets_dir / "custom-fonts-overrides.liquid"
+    overrides_path.write_text(overrides_content, encoding="utf-8")
+
+    # --- Inject render tags into layout files ---
+    layout_modifications = []
+
+    for layout_file in ["theme.liquid", "password.liquid"]:
+        layout_path = layout_dir / layout_file
+        if not layout_path.exists():
+            continue
+
+        # custom-fonts BEFORE fonts.liquid
+        injected = _inject_render_tag(
+            layout_path,
+            "custom-fonts",
+            before="render 'fonts'",
+        )
+        if injected:
+            layout_modifications.append(f"{layout_file}: added render 'custom-fonts' before fonts.liquid")
+
+        # custom-fonts-overrides AFTER theme-styles-variables
+        injected = _inject_render_tag(
+            layout_path,
+            "custom-fonts-overrides",
+            after="render 'theme-styles-variables'",
+        )
+        if injected:
+            layout_modifications.append(f"{layout_file}: added render 'custom-fonts-overrides' after theme-styles-variables")
+
+    report = {
+        "snippets_created": [
+            str(custom_fonts_path),
+            str(overrides_path),
+        ],
+        "google_fonts_loaded": [f.get("family_name", "") for f in external_fonts if f.get("source") == "google_fonts"],
+        "css_overrides": [
+            {"role": f.get("role", ""), "css_var": _FONT_ROLE_TO_CSS_VAR.get(f.get("role", ""), "")}
+            for f in external_fonts
+            if f.get("role") in _FONT_ROLE_TO_CSS_VAR
+        ],
+        "layout_modifications": layout_modifications,
+    }
+
+    return {"content": [{"type": "text", "text": json.dumps(report, indent=2)}]}
+
+
+# ---------------------------------------------------------------------------
 # Bundle all tools into an MCP server
 # ---------------------------------------------------------------------------
 
 designer_tools_server = create_sdk_mcp_server(
     name="designer-tools",
     version="1.0.0",
-    tools=[parse_settings_schema, get_shopify_fonts, validate_setting_value, apply_design_tokens],
+    tools=[
+        parse_settings_schema,
+        get_shopify_fonts,
+        resolve_font,
+        validate_setting_value,
+        apply_design_tokens,
+        inject_external_fonts,
+    ],
 )
