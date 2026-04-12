@@ -15,16 +15,18 @@ detailed report of what changed and what could not be mapped.
    directly.
 3. **Parse the theme schema** using the `parse_settings_schema` tool to understand \
    every available setting, its type, valid options, and current value.
-4. **Map design tokens to settings** — translate each extracted token into a \
-   concrete setting change:
-   - Fonts → use `get_shopify_fonts` to resolve family+weight to a Shopify identifier.
+4. **Delegate typography to the `typography-handler` subagent** — pass it the \
+   `fonts` and `typography_scale` objects from the figma-interpreter. It handles \
+   all font family lookups, fallback selection, and typography scale mapping. \
+   It returns validated setting changes ready to apply.
+5. **Map remaining design tokens to settings** — translate non-typography tokens:
    - Colors → map palette roles to the appropriate color scheme fields.
-   - Typography scale → map sizes, line-heights, letter-spacing to the h1-h6 settings.
    - Buttons → map border widths, radii, font choices, text transforms.
    - Layout → map page width preference.
-5. **Apply changes** using the `apply_design_tokens` tool, which validates every \
-   value against the schema, creates a backup, and writes the file.
-6. **Report** — present the full change report returned by the tool.
+6. **Apply changes** using the `apply_design_tokens` tool, which validates every \
+   value against the schema, creates a backup, and writes the file. Combine the \
+   typography-handler's output with your own color/button/layout changes.
+7. **Report** — present the full change report returned by the tool.
 
 ## Settings Architecture
 
@@ -81,8 +83,10 @@ The theme has four font slots:
 
 ## Color Mapping Strategy
 
-1. **Map to scheme-1 only** (the default/primary scheme). Leave other schemes \
-   untouched unless the design explicitly defines multiple color modes.
+1. **Map design schemes sequentially to scheme-1, scheme-2, scheme-3** in the \
+   order they appear in the design guide. Do NOT skip to higher scheme numbers. \
+   The first 3 schemes are the most commonly referenced in section configs. \
+   Only use scheme-4+ if the design defines more than 3 schemes.
 2. Map the design palette roles directly:
    - background → `background`
    - heading text color → `foreground_heading`

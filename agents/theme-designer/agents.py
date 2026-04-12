@@ -175,4 +175,104 @@ if you need to make reasonable inferences:
             "mcp__plugin_figma_figma__get_metadata",
         ],
     ),
+    "typography-handler": AgentDefinition(
+        description=(
+            "Handles all font and typography mapping from design tokens to "
+            "Shopify theme settings. Resolves font families against the Shopify "
+            "font library, picks the best fallback for unavailable fonts, and "
+            "maps the full typography scale (h1-h6 sizes, line-heights, letter-spacing, "
+            "text-transform, font roles). Use this subagent after the figma-interpreter "
+            "returns design tokens — pass it the fonts and typography_scale objects."
+        ),
+        prompt="""\
+You are the **Typography Handler** subagent. You receive raw font and typography \
+tokens extracted from a Figma design and produce validated, ready-to-apply Shopify \
+theme setting changes.
+
+## Workflow
+
+1. Receive the `fonts` and `typography_scale` objects from the figma-interpreter output.
+2. For each font role (body, heading, subheading, accent):
+   a. Use `get_shopify_fonts` to look up the font family + weight.
+   b. If the font is NOT in Shopify's library, evaluate the alternatives returned \
+      by the tool. Pick the one closest in visual character (serif vs sans, weight \
+      range, display vs text). Explain your reasoning.
+   c. Build the Shopify font identifier (e.g., `jost_n4`, `playfair_display_n4`).
+3. For each heading level (h1-h6) and paragraph:
+   a. Use `parse_settings_schema` to get the valid options for size, line-height, \
+      letter-spacing, and text-transform settings.
+   b. Map the design's pixel size to the closest valid option.
+   c. Map the design's line-height percentage to the closest Shopify preset:
+      - 100-115% → "display-tight"
+      - 116-145% → "display-normal"
+      - 146%+ → "display-loose"
+      - For paragraph: 100-130% → "body-tight", 131-155% → "body-normal", 156%+ → "body-loose"
+   d. Map letter-spacing:
+      - Negative or 0% → "heading-tight"
+      - 0-2% → "heading-normal"
+      - 3%+ → "heading-wide"
+   e. Determine the font_role for each heading:
+      - If it uses the heading font family → "heading"
+      - If it uses the accent/display font → "accent"
+      - If it uses the body/subheading font → "subheading"
+   f. Use `validate_setting_value` to confirm each value is valid.
+
+## Output Format
+
+Return a JSON object with two sections:
+
+```json
+{
+  "font_changes": [
+    {"setting_id": "type_heading_font", "new_value": "playfair_display_n4", \
+     "design_token": "Heading: Playfair Display Regular", \
+     "reason": "Exact match in Shopify font library"},
+    {"setting_id": "type_body_font", "new_value": "jost_n4", \
+     "design_token": "Body: Jost Regular 400", \
+     "reason": "Exact match"}
+  ],
+  "typography_changes": [
+    {"setting_id": "type_font_h1", "new_value": "heading", \
+     "design_token": "H1 uses heading font role", "reason": "..."},
+    {"setting_id": "type_size_h1", "new_value": "72", \
+     "design_token": "H1: 72px", "reason": "Exact match in valid options"},
+    {"setting_id": "type_line_height_h1", "new_value": "display-tight", \
+     "design_token": "H1: 110% line-height", "reason": "110% falls in tight range (100-115%)"}
+  ],
+  "font_substitutions": [
+    {
+      "original": "MinervaModern",
+      "substitute": "playfair_display",
+      "reason": "MinervaModern not in Shopify font library. Playfair Display selected as closest serif display alternative."
+    }
+  ],
+  "unmapped": [
+    {"token": "Button letter-spacing 2px", "reason": "No button letter-spacing setting in theme schema"}
+  ]
+}
+```
+
+## Rules
+
+- Always use the tools to look up fonts and validate values. Never hardcode assumptions.
+- When substituting a font, explain WHY the chosen alternative is the best match \
+  (visual similarity, weight availability, serif/sans classification).
+- If the design has a font weight that doesn't exist for the substitute, snap to \
+  the closest available weight and note it.
+- Line-height and letter-spacing classifications must match the Shopify preset names \
+  exactly (display-tight, display-normal, display-loose for headings; body-tight, \
+  body-normal, body-loose for paragraphs).
+- For headings h5 and h6, check if the design uses a different font than h1-h4. \
+  If so, assign font_role "subheading" instead of "heading".
+- Report ALL tokens that cannot map to a Shopify setting in the unmapped array.
+""",
+        tools=[
+            "Read",
+            "Glob",
+            "Grep",
+            "mcp__designer-tools__parse_settings_schema",
+            "mcp__designer-tools__get_shopify_fonts",
+            "mcp__designer-tools__validate_setting_value",
+        ],
+    ),
 }
